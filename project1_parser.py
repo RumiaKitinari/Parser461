@@ -79,6 +79,7 @@ class Parser:
         # iterates through and processes all tokens
         while(self.current_token != False): 
             self.advance() 
+            self.prefix.append(self.statement())
 
         # Returns the joined stringified statements (aka program)
         return ''.join([self.parse_statement(item) for item in self.prefix])
@@ -102,14 +103,16 @@ class Parser:
         return f"({', '.join(statement)})"
     
     # parse if, while, assignment statement.
-    def statement(self):
-        if(self.current_token[0] == 'if'): 
-            self.prefix.append(['if', ''])
-            return self.if_statement()
-        elif(self.current_token[0] == 'while'): 
-            return self.while_loop()
+    def statement(self, out = []):
+        if(self.get_code()[0] == 'if'): 
+            out.append('if')
+            return self.if_statement(out)
+        elif(self.get_code()[0] == 'while'): 
+            out.append('while')
+            return self.while_loop(out)
         else:   # No error-checking
-            return self.assignment()
+            out.append('=')
+            return self.assignment(out)
 
 
     # parse assignment statements
