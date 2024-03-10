@@ -1,3 +1,63 @@
+def reduce_code(code): 
+    code = code.splitlines()
+
+    # Converts code into an itemized list
+    for i in range(len(code) - 1, -1, -1): 
+        if(len(code[i]) == 0): code.pop(i)  # Removes empty strings
+        else:
+            # Associates lines of code with depth
+            code[i] = code[i].split("    ")
+            code[i][0] = 0
+            keep = True
+
+            if(len(code[i]) > 1):   # Accounts for empty (blank) lines
+                while(code[i][1] == ""):    # Counts number of blanks (depth)
+                    code[i][0] += 1
+                    code[i].pop(1)
+                    if(len(code[i]) <= 1):  # Deletes empty (string) lines
+                        keep = False
+                        break
+                
+                if(keep == True): 
+                    code[i][1] = code[i][1].split(" ")  # Breaks code into characters/strings
+                    code[i][1] = [item for item in code[i][1] if item != ""]    # Filters empty items
+
+            else: keep = False
+
+            if(keep == False): code.pop(i)  # Removes empty lines
+
+    return code
+
+def reduce_code2(code): 
+    code = code.splitlines()
+
+    # Converts code into an itemized list
+    for i in range(len(code) - 1, -1, -1): 
+        if(len(code[i]) == 0): code.pop(i)  # Removes empty strings
+        else:
+            code[i] = code[i].split(" ")  # Breaks code into characters/strings
+            code[i] = [item for item in code[i] if item != ""]    # Filters empty items
+            if(len(code[i]) == 0): code.pop(i)
+
+    return code
+
+code_5 = '''
+    x = 5 + 3 + 10
+    y = x + 3
+    if y > 8 then z = y - x else z = y + x
+    x = x / y
+    x = y + x * x
+    while x > 0 do
+        while y > 0 do
+            x = x - 1
+    '''
+
+print(reduce_code(code_5))
+print()
+print(reduce_code2(code_5))
+
+
+
 # Lexer
 class Lexer:
     def __init__(self, code):
@@ -11,39 +71,11 @@ class Lexer:
         for i in range(len(code) - 1, -1, -1): 
             if(len(code[i]) == 0): code.pop(i)  # Removes empty strings
             else:
-                # Associates lines of code with depth
-                code[i] = code[i].split("    ")
-                code[i][0] = 0
-                keep = True
-
-                if(len(code[i]) > 1):   # Accounts for empty (blank) lines
-                    while(code[i][1] == ""):    # Counts number of blanks (depth)
-                        code[i][0] += 1
-                        code[i].pop(1)
-                        if(len(code[i]) <= 1):  # Deletes empty (string) lines
-                            keep = False
-                            break
-                    
-                    if(keep == True): 
-                        code[i][1] = code[i][1].split(" ")  # Breaks code into characters/strings
-                        code[i][1] = [item for item in code[i][1] if item != ""]    # Filters empty items
-
-                else: keep = False
-
-                if(keep == False): code.pop(i)  # Removes empty lines
+                code[i] = code[i].split(" ")  # Breaks code into characters/strings
+                code[i] = [item for item in code[i] if item != ""]    # Filters empty items
+                if(len(code[i]) == 0): code.pop(i)
 
         return code
-    
-    # given a line, gets the depth of code
-    def get_depth(self, position): 
-        return self.code[position][0]
-
-    # retrieves a nested token if possible, False o/w
-    def get_nested_token(self): 
-        depth = self.code[self.position - 1]
-        if(self.get_depth(self.position) > depth): 
-            return self.get_token()
-        return False
     
     # inserts a new line into (directly after) current position
     def add_line(self, line):
@@ -84,9 +116,6 @@ class Parser:
         self.current_token = None
         self.prefix = []    # stores all lines in prefix notation
     
-    # returns the code part of current token
-    def get_code(self): return self.current_token[1]
-
     # function to parse the entire program
     def parse(self):
         # iterates through and processes all tokens
@@ -117,9 +146,9 @@ class Parser:
     
     # parse if, while, assignment statement.
     def statement(self):
-        if(self.get_code()[0] == 'if'): 
+        if(self.current_token[0] == 'if'): 
             return self.if_statement(['if'])
-        elif(self.get_code()[0] == 'while'): 
+        elif(self.current_token[0] == 'while'): 
             return self.while_loop(['while'])
         else:   # No error-checking
             return self.assignment(['='])
@@ -136,10 +165,10 @@ class Parser:
 
     # parse assignment statements
     def assignment(self, out):
-        out.append(self.get_code()[0])
-        exp = self.get_code()[2:]
+        out.append(self.current_token[0])
+        exp = self.current_token[2:]
         exp = self.assignment_new_line_check(exp)
-        out.append(self.arithmetic_expression(self.get_code()[2:]))
+        out.append(self.arithmetic_expression(exp))
         return out
 
     # parse arithmetic experssions
@@ -185,7 +214,18 @@ class Parser:
     # parse if statement, you can handle then and else part here.
     # you also have to check for condition.
     def if_statement(self, out):
-        pass
+        cond, index = self.condition(self.current_token)
+        out.append(cond)
+        if(index == len(self.current_token) - 1): 
+            self.advance()
+            out.append(self.statement())
+        else: 
+            index2 = index + 1
+            while(index2 < len(self.current_token)): 
+                if()
+
+
+        return out
 
     
     # implement while statment, check for condition
@@ -193,6 +233,14 @@ class Parser:
     def while_loop(self, out):
         pass
     
+    
+    # Returns formatted conditional + starting index
+    def condition(self, line):
+        index = 0
+        while(line[index] not in ["==", "!=", "<", "<=", ">", ">="]): index += 1
+        cond = [line[index], self.arithmetic_expression(line[:index - 1])],
 
-    def condition(self, out):
-        pass
+        index2 = 0
+        while(line[index2] not in ["then", "do"]): index2 += 1
+        cond.append[self.arithmetic_expression[index + 1, index2 - 1]]
+        return cond, index2
