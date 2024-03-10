@@ -1,3 +1,46 @@
+# parse arithmetic experssions
+def arithmetic_expression(exp, first = True):
+    exp = factor(exp)
+
+    index = 0
+    while(index < len(exp)): 
+        # Creates a new term for every mult/div
+        if(exp[index] == "+" or exp[index] == "-"): 
+            exp[index - 1] = [exp[index], exp[index - 1], exp[index + 1]]
+            for i in range(2): exp.pop(index)
+        else: index += 1
+    
+    # No (more) mults or divs
+    if(first): return exp[0]
+    return exp 
+            
+# Checks for mults/divs
+def term(exp):
+    index = 0
+    while(index < len(exp)): 
+        # Creates a new term for every mult/div
+        if(exp[index] == "/" or exp[index] == "*"): 
+            exp[index - 1] = [exp[index], exp[index - 1], exp[index + 1]]
+            for i in range(2): exp.pop(index)
+        else: index += 1
+    
+    return exp  # No (more) mults or divs
+
+# Checks if nested arithmetic expression
+def factor(exp, index = 0):
+    while(index < len(exp)): 
+        if(exp[index][0] == "("): 
+            exp[index] = exp[index][1:]     # Removes the "("
+            while(exp[index][-1] != ")"): index += 1
+            exp[index] = exp[index][:-1]    # Removes the ")"
+            return arithmetic_expression(arithmetic_expression(exp[0:index + 1], False) + exp[index + 1:], False)
+        else: index += 1
+    return term(exp)
+
+
+print(arithmetic_expression("(1 + 2 + (3 + (4 + 5))) * 6".split(" ")))
+print(arithmetic_expression("1 + 2".split(" ")))
+
 # Lexer
 class Lexer:
     def __init__(self, code):
@@ -116,21 +159,51 @@ class Parser:
 
 
     # parse assignment statements
-    def assignment(self):
-        pass
+    def assignment(self, out):
+        out.append(self.get_code()[0])
+        out.append(self.arithmetic_expression(self.get_code()[2:]))
+        return out
      
 
     # parse arithmetic experssions
-    def arithmetic_expression(self, ):
-        pass
-        
-   
-    def term(self, ):
-        pass
-    
+    def arithmetic_expression(self, exp, first = True):
+        exp = self.factor(exp)
 
-    def factor(self, ):
-        pass
+        index = 0
+        while(index < len(exp)): 
+            # Creates a new term for every add/sub
+            if(exp[index] == "+" or exp[index] == "-"): 
+                exp[index - 1] = [exp[index], exp[index - 1], exp[index + 1]]
+                for i in range(2): exp.pop(index)
+            else: index += 1
+        
+        # No (more) adds or subs
+        if(first): return exp[0]  
+        return exp
+                
+    # Checks for mults/divs
+    def term(self, exp):
+        index = 0
+        while(index < len(exp)): 
+            # Creates a new term for every mult/div
+            if(exp[index] == "/" or exp[index] == "*"): 
+                exp[index - 1] = [exp[index], exp[index - 1], exp[index + 1]]
+                for i in range(2): exp.pop(index)
+            else: index += 1
+        
+        return exp  # No (more) mults or divs
+    
+    # Checks if nested arithmetic expression
+    def factor(self, exp, index = 0):
+        while(index < len(exp)): 
+            if(exp[index][0] == "("): 
+                exp[index] = exp[index][1:]     # Removes the "("
+                while(exp[index][-1] != ")"): index += 1
+                exp[index] = exp[index][:-1]    # Removes the ")"
+                return self.arithmetic_expression(self.arithmetic_expression(exp[0:index + 1], False) + exp[index + 1:], False)
+            else: index += 1
+        return self.term(exp)
+        
 
     # parse if statement, you can handle then and else part here.
     # you also have to check for condition.
