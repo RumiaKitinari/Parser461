@@ -1,60 +1,4 @@
-def reduce_code(code): 
-    code = code.splitlines()
 
-    # Converts code into an itemized list
-    for i in range(len(code) - 1, -1, -1): 
-        if(len(code[i]) == 0): code.pop(i)  # Removes empty strings
-        else:
-            # Associates lines of code with depth
-            code[i] = code[i].split("    ")
-            code[i][0] = 0
-            keep = True
-
-            if(len(code[i]) > 1):   # Accounts for empty (blank) lines
-                while(code[i][1] == ""):    # Counts number of blanks (depth)
-                    code[i][0] += 1
-                    code[i].pop(1)
-                    if(len(code[i]) <= 1):  # Deletes empty (string) lines
-                        keep = False
-                        break
-                
-                if(keep == True): 
-                    code[i][1] = code[i][1].split(" ")  # Breaks code into characters/strings
-                    code[i][1] = [item for item in code[i][1] if item != ""]    # Filters empty items
-
-            else: keep = False
-
-            if(keep == False): code.pop(i)  # Removes empty lines
-
-    return code
-
-def reduce_code2(code): 
-    code = code.splitlines()
-
-    # Converts code into an itemized list
-    for i in range(len(code) - 1, -1, -1): 
-        if(len(code[i]) == 0): code.pop(i)  # Removes empty strings
-        else:
-            code[i] = code[i].split(" ")  # Breaks code into characters/strings
-            code[i] = [item for item in code[i] if item != ""]    # Filters empty items
-            if(len(code[i]) == 0): code.pop(i)
-
-    return code
-
-code_5 = '''
-    x = 5 + 3 + 10
-    y = x + 3
-    if y > 8 then z = y - x else z = y + x
-    x = x / y
-    x = y + x * x
-    while x > 0 do
-        while y > 0 do
-            x = x - 1
-    '''
-
-print(reduce_code(code_5))
-print()
-print(reduce_code2(code_5))
 
 
 
@@ -79,8 +23,12 @@ class Lexer:
     
     # inserts a new line into (directly after) current position
     def add_line(self, line):
-        depth = self.get_depth(self.position - 1)
-        self.code.insert(self.position, [depth, line])
+        self.code.insert(self.position, line)
+
+    # checks if next line starts with "else"
+    def get_next_is_else(self): 
+        if(self.position >= len(self.code)): return False   # Accounts for last-line "if-then"
+        return self.code[self.position][0] == "else"
 
     # move the lexer position and identify next possible tokens.
     def get_token(self):
@@ -132,16 +80,17 @@ class Parser:
 
     # stringifies a statement
     def parse_statement(self, statement):        
-        if(statement == None): return "(NONE)"
         for i in range(len(statement)): 
             # recursively parses if statement has nested components
+            
             if(type(statement[i]) == list): 
                 statement[i] = self.parse_statement(statement[i])
 
             # is_digit checks if contains only digits (which matches definition of digit in grammar)
             elif(not statement[i].isdigit()):     
                 statement[i] = f"'{statement[i]}'"
-            
+        
+        if(statement[0] == 'while'): return f"[({', '.join(statement)})]"
         return f"({', '.join(statement)})"
     
     # parse if, while, assignment statement.
@@ -151,7 +100,7 @@ class Parser:
         elif(stmt[0] == 'while'): 
             return self.while_loop(['while'])
         else:   # No error-checking
-            return self.assignment(['='])
+            return self.assignment(['='], stmt)
 
     # Checks if abnormal variable during assignment (= new line)
     def assignment_new_line_check(self, exp): 
@@ -215,38 +164,75 @@ class Parser:
     # you also have to check for condition.
     def if_statement(self, out):
         cond, index2 = self.condition(self.current_token)
-        out.append(cond)
-        if(index2 == len(self.current_token)): 
+        out.append(cond)  # Appends formatted condition
+        
+        if(index2 == len(self.current_token)):  # Accepts next-line "then" statement
             self.advance()
-            out.append(self.statement())
-        else: 
-            index3 = index2 + 1
-            while(index3 < len(self.current_token)): 
-                if(self.current_token[index3] == "else"): 
-                    out.append(self.current_token[index2 : index3])
-                    index2 = 
-                    break
-                else: 
-                    index3 += 1
-            out.append(self.current_token[index2:index3])
+            index2 = 0
+        
+        # Searches for "else"
+        index3 = index2 + 1
+        while(index3 < len(self.current_token)):    
+            if(self.current_token[index3] == "else"): 
+                out.append(self.statement(self.current_token[index2 : index3]))
 
+                if(index3 == len(self.current_token) - 1):  # Accounts for separate-line statement after "else"
+                    self.advance()
+                    out.append(self.statement(self.current_token))
+                else:   # Checks for same-line else
+                    out.append(self.statement(self.current_token[index3 + 1:]))
 
-        return out
+                return out
+            index3 += 1
+                
+        out.append(self.statement(self.current_token[index2:]))     # Adds "then" statement
+
+        # Accepts next-line "else" statement
+        if(self.lexer.get_next_is_else()):
+            self.advance()
+            if(len(self.current_token) == 1):   # Adds next-line "else" statement
+                self.advance()
+                out.append(self.statement(self.current_token))
+            else: out.append(self.statement(self.current_token[1:]))    # Adds same-line "else" statement
+
+        return out  # Returns outputted statement
 
     
     # implement while statment, check for condition
     # possibly make a call to statement?
     def while_loop(self, out):
-        pass
+        cond, index2 = self.condition(self.current_token)
+        out.append(cond)
+        if(index2 == len(self.current_token)): 
+            self.advance()
+            out.append(self.statement(self.current_token))
+        else: 
+            out.append(self.statement(self.current_token[index2:]))
+        return out
     
     
     # Returns formatted conditional + starting index
     def condition(self, line):
         index = 0
         while(line[index] not in ["==", "!=", "<", "<=", ">", ">="]): index += 1
-        cond = [line[index], self.arithmetic_expression(line[:index - 1])],
+        cond = [line[index], self.arithmetic_expression(line[1:index])]
 
-        index2 = 0
+        index2 = index
         while(line[index2] not in ["then", "do"]): index2 += 1
-        cond.append[self.arithmetic_expression[index + 1, index2 - 1]]
+        cond.append(self.arithmetic_expression(line[index + 1 : index2]))
         return cond, index2 + 1     # returns full conditional, index after "then"/"do"
+    
+
+def test_parser(code):
+    lex = Lexer(code)
+    par = Parser(lex)
+    print(par.parse())
+
+code = '''
+    x = 5 + 3
+    y = 0
+    if x > y then y = x
+    else 
+        y = 1
+    '''
+test_parser(code)
