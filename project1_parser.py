@@ -44,6 +44,11 @@ class Lexer:
         if(self.get_depth(self.position) > depth): 
             return self.get_token()
         return False
+    
+    # inserts a new line into (directly after) current position
+    def add_line(self, line):
+        depth = self.get_depth(self.position - 1)
+        self.code.insert(self.position, [depth, line])
 
     # move the lexer position and identify next possible tokens.
     def get_token(self):
@@ -119,13 +124,21 @@ class Parser:
         else:   # No error-checking
             return self.assignment(['='])
 
-    # Checks if abnormal spacing
-    def assignment_validity(self, exp): 
-        pass
+    # Checks if abnormal variable during assignment (= new line)
+    def assignment_new_line_check(self, exp): 
+        symbols = "+-*/"
+        for i in range(len(exp) - 1): 
+            if((not exp[i] in symbols) and (not exp[i + 1] in symbols)): 
+                self.lexer.add_line(exp[i + 1:])    # New line
+                return exp[:i + 1]          # Truncated line
+            
+        return exp  # Normal line if no problems
 
     # parse assignment statements
     def assignment(self, out):
         out.append(self.get_code()[0])
+        exp = self.get_code()[2:]
+        exp = self.assignment_new_line_check(exp)
         out.append(self.arithmetic_expression(self.get_code()[2:]))
         return out
 
@@ -171,15 +184,15 @@ class Parser:
 
     # parse if statement, you can handle then and else part here.
     # you also have to check for condition.
-    def if_statement(self, curr_to):
+    def if_statement(self, out):
         pass
 
     
     # implement while statment, check for condition
     # possibly make a call to statement?
-    def while_loop(self):
+    def while_loop(self, out):
         pass
     
 
-    def condition(self):
+    def condition(self, out):
         pass
