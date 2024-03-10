@@ -1,46 +1,3 @@
-# parse arithmetic experssions
-def arithmetic_expression(exp, first = True):
-    exp = factor(exp)
-
-    index = 0
-    while(index < len(exp)): 
-        # Creates a new term for every mult/div
-        if(exp[index] == "+" or exp[index] == "-"): 
-            exp[index - 1] = [exp[index], exp[index - 1], exp[index + 1]]
-            for i in range(2): exp.pop(index)
-        else: index += 1
-    
-    # No (more) mults or divs
-    if(first): return exp[0]
-    return exp 
-            
-# Checks for mults/divs
-def term(exp):
-    index = 0
-    while(index < len(exp)): 
-        # Creates a new term for every mult/div
-        if(exp[index] == "/" or exp[index] == "*"): 
-            exp[index - 1] = [exp[index], exp[index - 1], exp[index + 1]]
-            for i in range(2): exp.pop(index)
-        else: index += 1
-    
-    return exp  # No (more) mults or divs
-
-# Checks if nested arithmetic expression
-def factor(exp, index = 0):
-    while(index < len(exp)): 
-        if(exp[index][0] == "("): 
-            exp[index] = exp[index][1:]     # Removes the "("
-            while(exp[index][-1] != ")"): index += 1
-            exp[index] = exp[index][:-1]    # Removes the ")"
-            return arithmetic_expression(arithmetic_expression(exp[0:index + 1], False) + exp[index + 1:], False)
-        else: index += 1
-    return term(exp)
-
-
-print(arithmetic_expression("(1 + 2 + (3 + (4 + 5))) * 6".split(" ")))
-print(arithmetic_expression("1 + 2".split(" ")))
-
 # Lexer
 class Lexer:
     def __init__(self, code):
@@ -57,17 +14,23 @@ class Lexer:
                 # Associates lines of code with depth
                 code[i] = code[i].split("    ")
                 code[i][0] = 0
+                keep = True
 
-                while(code[i][1] == ""):    # Counts number of blanks
-                    code[i][0] += 1
-                    code[i].pop(1)
-                    if(len(code[i]) == 1):  # Deletes empty lines
-                        code.pop(i)
-                        break
-                
-                # Breaks code into characters/strings
-                if(len(code) > i and len(code[i]) == 2): 
-                    code[i][1] = code[i][1].split(" ")
+                if(len(code[i]) > 1):   # Accounts for empty (blank) lines
+                    while(code[i][1] == ""):    # Counts number of blanks (depth)
+                        code[i][0] += 1
+                        code[i].pop(1)
+                        if(len(code[i]) <= 1):  # Deletes empty (string) lines
+                            keep = False
+                            break
+                    
+                    if(keep == True): 
+                        code[i][1] = code[i][1].split(" ")  # Breaks code into characters/strings
+                        code[i][1] = [item for item in code[i][1] if item != ""]    # Filters empty items
+
+                else: keep = False
+
+                if(keep == False): code.pop(i)  # Removes empty lines
 
         return code
     
@@ -75,14 +38,16 @@ class Lexer:
     def get_depth(self, position): 
         return self.code[position][0]
 
+    # retrieves a nested token if possible, False o/w
     def get_nested_token(self): 
         depth = self.code[self.position - 1]
         if(self.get_depth(self.position) > depth): 
             return self.get_token()
+        return False
 
     # move the lexer position and identify next possible tokens.
     def get_token(self):
-        if(self.position > len(self.code)): # if no other code exists, terminates
+        if(self.position >= len(self.code)): # if no other code exists, terminates
             return False
         else:   # gets a line of code
             self.position += 1
@@ -122,11 +87,10 @@ class Parser:
         # iterates through and processes all tokens
         while(self.current_token != False): 
             self.advance() 
-            self.prefix.append(self.statement())
+            if(self.current_token != False): self.prefix.append(self.statement())
 
         # Returns the joined stringified statements (aka program)
         return ''.join([self.parse_statement(item) for item in self.prefix])
-
         
     # processes next token 
     def advance(self):
@@ -134,6 +98,7 @@ class Parser:
 
     # stringifies a statement
     def parse_statement(self, statement):        
+        if(statement == None): return "(NONE)"
         for i in range(len(statement)): 
             # recursively parses if statement has nested components
             if(type(statement[i]) == list): 
@@ -146,24 +111,23 @@ class Parser:
         return f"({', '.join(statement)})"
     
     # parse if, while, assignment statement.
-    def statement(self, out = []):
+    def statement(self):
         if(self.get_code()[0] == 'if'): 
-            out.append('if')
-            return self.if_statement(out)
+            return self.if_statement(['if'])
         elif(self.get_code()[0] == 'while'): 
-            out.append('while')
-            return self.while_loop(out)
+            return self.while_loop(['while'])
         else:   # No error-checking
-            out.append('=')
-            return self.assignment(out)
+            return self.assignment(['='])
 
+    # Checks if abnormal spacing
+    def assignment_validity(self, exp): 
+        pass
 
     # parse assignment statements
     def assignment(self, out):
         out.append(self.get_code()[0])
         out.append(self.arithmetic_expression(self.get_code()[2:]))
         return out
-     
 
     # parse arithmetic experssions
     def arithmetic_expression(self, exp, first = True):
