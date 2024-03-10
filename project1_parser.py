@@ -121,7 +121,7 @@ class Parser:
         # iterates through and processes all tokens
         while(self.current_token != False): 
             self.advance() 
-            if(self.current_token != False): self.prefix.append(self.statement())
+            if(self.current_token != False): self.prefix.append(self.statement(self.current_token))
 
         # Returns the joined stringified statements (aka program)
         return ''.join([self.parse_statement(item) for item in self.prefix])
@@ -145,10 +145,10 @@ class Parser:
         return f"({', '.join(statement)})"
     
     # parse if, while, assignment statement.
-    def statement(self):
-        if(self.current_token[0] == 'if'): 
+    def statement(self, stmt):
+        if(stmt[0] == 'if'): 
             return self.if_statement(['if'])
-        elif(self.current_token[0] == 'while'): 
+        elif(stmt[0] == 'while'): 
             return self.while_loop(['while'])
         else:   # No error-checking
             return self.assignment(['='])
@@ -164,9 +164,9 @@ class Parser:
         return exp  # Normal line if no problems
 
     # parse assignment statements
-    def assignment(self, out):
-        out.append(self.current_token[0])
-        exp = self.current_token[2:]
+    def assignment(self, out, line):
+        out.append(line[0])
+        exp = line[2:]
         exp = self.assignment_new_line_check(exp)
         out.append(self.arithmetic_expression(exp))
         return out
@@ -214,15 +214,21 @@ class Parser:
     # parse if statement, you can handle then and else part here.
     # you also have to check for condition.
     def if_statement(self, out):
-        cond, index = self.condition(self.current_token)
+        cond, index2 = self.condition(self.current_token)
         out.append(cond)
-        if(index == len(self.current_token) - 1): 
+        if(index2 == len(self.current_token)): 
             self.advance()
             out.append(self.statement())
         else: 
-            index2 = index + 1
-            while(index2 < len(self.current_token)): 
-                if()
+            index3 = index2 + 1
+            while(index3 < len(self.current_token)): 
+                if(self.current_token[index3] == "else"): 
+                    out.append(self.current_token[index2 : index3])
+                    index2 = 
+                    break
+                else: 
+                    index3 += 1
+            out.append(self.current_token[index2:index3])
 
 
         return out
@@ -243,4 +249,4 @@ class Parser:
         index2 = 0
         while(line[index2] not in ["then", "do"]): index2 += 1
         cond.append[self.arithmetic_expression[index + 1, index2 - 1]]
-        return cond, index2
+        return cond, index2 + 1     # returns full conditional, index after "then"/"do"
