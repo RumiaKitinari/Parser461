@@ -79,18 +79,21 @@ class Parser:
         self.current_token = self.lexer.get_token()
 
     # stringifies a statement
-    def parse_statement(self, statement):        
+    def parse_statement(self, statement, is_while = False):        
         for i in range(len(statement)): 
             # recursively parses if statement has nested components
             
-            if(type(statement[i]) == list): 
-                statement[i] = self.parse_statement(statement[i])
+            if(type(statement[i]) == list):
+                if(statement[0] == "'while'" and i == 2): 
+                    statement[i] = self.parse_statement(statement[i], True)
+                else: 
+                    statement[i] = self.parse_statement(statement[i])
 
             # is_digit checks if contains only digits (which matches definition of digit in grammar)
             elif(not statement[i].isdigit()):     
                 statement[i] = f"'{statement[i]}'"
         
-        if(statement[0] == 'while'): return f"[({', '.join(statement)})]"
+        if(is_while): return f"[({', '.join(statement)})]"
         return f"({', '.join(statement)})"
     
     # parse if, while, assignment statement.
